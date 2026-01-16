@@ -4,7 +4,19 @@ import { Menu, MenuItem } from "@tauri-apps/api/menu";
 import { LogicalPosition } from "@tauri-apps/api/dpi";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { Folder, File } from "lucide-react";
+import {
+  ArrowLeftRight,
+  File,
+  FileArchive,
+  FileAudio,
+  FileCode,
+  FileImage,
+  FileJson,
+  FileSpreadsheet,
+  FileText,
+  FileVideo,
+  Folder,
+} from "lucide-react";
 
 type FileTreeNode = {
   name: string;
@@ -16,6 +28,7 @@ type FileTreeNode = {
 type FileTreePanelProps = {
   workspacePath: string;
   files: string[];
+  onToggleFilePanel: () => void;
 };
 
 type FileTreeBuildNode = {
@@ -91,7 +104,77 @@ function buildTree(paths: string[]): { nodes: FileTreeNode[]; folderPaths: Set<s
   return { nodes: toArray(root), folderPaths };
 }
 
-export function FileTreePanel({ workspacePath, files }: FileTreePanelProps) {
+function getFileIcon(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  switch (ext) {
+    case "ts":
+    case "tsx":
+    case "js":
+    case "jsx":
+    case "mjs":
+    case "cjs":
+    case "py":
+    case "rs":
+    case "swift":
+    case "go":
+    case "java":
+    case "kt":
+    case "cs":
+    case "cpp":
+    case "c":
+    case "h":
+    case "hpp":
+    case "sh":
+    case "zsh":
+    case "bash":
+      return FileCode;
+    case "json":
+      return FileJson;
+    case "md":
+    case "mdx":
+    case "txt":
+    case "rtf":
+      return FileText;
+    case "png":
+    case "jpg":
+    case "jpeg":
+    case "gif":
+    case "svg":
+    case "webp":
+    case "heic":
+      return FileImage;
+    case "mp4":
+    case "mov":
+    case "m4v":
+    case "webm":
+      return FileVideo;
+    case "mp3":
+    case "wav":
+    case "flac":
+    case "m4a":
+      return FileAudio;
+    case "zip":
+    case "gz":
+    case "tgz":
+    case "tar":
+    case "7z":
+    case "rar":
+      return FileArchive;
+    case "csv":
+    case "tsv":
+    case "xls":
+    case "xlsx":
+      return FileSpreadsheet;
+    default:
+      return File;
+  }
+}
+
+export function FileTreePanel({
+  workspacePath,
+  files,
+  onToggleFilePanel,
+}: FileTreePanelProps) {
   const { nodes, folderPaths } = useMemo(() => buildTree(files), [files]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
@@ -157,6 +240,7 @@ export function FileTreePanel({ workspacePath, files }: FileTreePanelProps) {
   const renderNode = (node: FileTreeNode, depth: number) => {
     const isFolder = node.type === "folder";
     const isExpanded = isFolder && expandedFolders.has(node.path);
+    const FileIcon = isFolder ? Folder : getFileIcon(node.name);
     return (
       <div key={node.path}>
         <button
@@ -182,7 +266,7 @@ export function FileTreePanel({ workspacePath, files }: FileTreePanelProps) {
             <span className="file-tree-spacer" aria-hidden />
           )}
           <span className="file-tree-icon" aria-hidden>
-            {isFolder ? <Folder size={12} /> : <File size={12} />}
+            <FileIcon size={12} />
           </span>
           <span className="file-tree-name">{node.name}</span>
         </button>
@@ -198,10 +282,17 @@ export function FileTreePanel({ workspacePath, files }: FileTreePanelProps) {
   return (
     <aside className="diff-panel file-tree-panel">
       <div className="git-panel-header">
-        <div className="git-panel-title">
+        <button
+          type="button"
+          className="git-panel-title git-panel-title-button"
+          onClick={onToggleFilePanel}
+          aria-label="Show git panel"
+          title="Show git panel"
+        >
           <Folder className="git-panel-icon" />
           Files
-        </div>
+          <ArrowLeftRight className="git-panel-switch-icon" aria-hidden />
+        </button>
         <div className="file-tree-count">
           {files.length ? `${files.length} file${files.length === 1 ? "" : "s"}` : "No files"}
         </div>

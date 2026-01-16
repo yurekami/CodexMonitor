@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Folder, GitBranch, Terminal } from "lucide-react";
+import { Check, Copy, Terminal } from "lucide-react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import type { BranchInfo, WorkspaceInfo } from "../../../types";
 
@@ -19,8 +19,6 @@ type MainHeaderProps = {
   onToggleTerminal: () => void;
   isTerminalOpen: boolean;
   showTerminalButton?: boolean;
-  filePanelMode: "git" | "files";
-  onToggleFilePanel: () => void;
 };
 
 export function MainHeader({
@@ -39,8 +37,6 @@ export function MainHeader({
   onToggleTerminal,
   isTerminalOpen,
   showTerminalButton = true,
-  filePanelMode,
-  onToggleFilePanel,
 }: MainHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -286,24 +282,6 @@ export function MainHeader({
         </div>
       </div>
       <div className="main-header-actions">
-        <button
-          type="button"
-          className={`ghost main-header-action${
-            filePanelMode === "files" ? " is-active" : ""
-          }`}
-          onClick={onToggleFilePanel}
-          data-tauri-drag-region="false"
-          aria-label={
-            filePanelMode === "files" ? "Show git panel" : "Show file tree"
-          }
-          title={filePanelMode === "files" ? "Show git panel" : "Show file tree"}
-        >
-          {filePanelMode === "files" ? (
-            <GitBranch size={14} aria-hidden />
-          ) : (
-            <Folder size={14} aria-hidden />
-          )}
-        </button>
         {showTerminalButton && (
           <button
             type="button"

@@ -109,8 +109,6 @@ type LayoutNodesOptions = {
   onCopyThread: () => void | Promise<void>;
   onToggleTerminal: () => void;
   showTerminalButton: boolean;
-  filePanelMode: "git" | "files";
-  onToggleFilePanel: () => void;
   centerMode: "chat" | "diff";
   onExitDiff: () => void;
   activeTab: "projects" | "codex" | "git" | "log";
@@ -351,8 +349,6 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
       onToggleTerminal={options.onToggleTerminal}
       isTerminalOpen={options.terminalOpen}
       showTerminalButton={options.showTerminalButton}
-      filePanelMode={options.filePanelMode}
-      onToggleFilePanel={options.onToggleFilePanel}
     />
   ) : null;
 
@@ -384,6 +380,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
       <FileTreePanel
         workspacePath={options.activeWorkspace.path}
         files={options.files}
+        onToggleFilePanel={options.onToggleFilePanel}
       />
     ) : (
       <GitDiffPanel
@@ -411,6 +408,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
         issuesLoading={options.gitIssuesLoading}
         issuesError={options.gitIssuesError}
         gitRemoteUrl={options.gitRemoteUrl}
+        onToggleFilePanel={options.onToggleFilePanel}
       />
     );
 
