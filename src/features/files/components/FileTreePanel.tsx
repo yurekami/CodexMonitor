@@ -331,7 +331,7 @@ export function FileTreePanel({
         <button
           type="button"
           className={`file-tree-row${isFolder ? " is-folder" : " is-file"}`}
-          style={{ paddingLeft: `${depth * 14}px` }}
+          style={{ paddingLeft: `${depth * 10}px` }}
           onClick={() => {
             if (isFolder) {
               toggleFolder(node.path);
