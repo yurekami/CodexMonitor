@@ -427,7 +427,7 @@ export function MainHeader({
                         }}
                         data-tauri-drag-region="false"
                       >
-                        Create + checkout
+                        Create
                       </button>
                     </div>
                     {branchValidationMessage && (

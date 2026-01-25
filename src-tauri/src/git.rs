@@ -1283,7 +1283,7 @@ pub(crate) async fn create_git_branch(
     let target = head.peel_to_commit().map_err(|e| e.to_string())?;
     repo.branch(&name, &target, false)
         .map_err(|e| e.to_string())?;
-    checkout_branch(&repo, &name).map_err(|e| e.to_string())
+    Ok(())
 }
 
 #[cfg(test)]
