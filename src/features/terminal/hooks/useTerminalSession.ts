@@ -67,6 +67,9 @@ export function useTerminalSession({
     openedSessionsRef.current.delete(key);
     if (activeKeyRef.current === key) {
       terminalRef.current?.reset();
+      setHasSession(false);
+      setStatus("idle");
+      setMessage("Open a terminal to start a session.");
     }
   }, []);
 

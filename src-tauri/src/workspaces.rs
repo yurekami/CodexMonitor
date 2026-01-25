@@ -1668,6 +1668,7 @@ mod tests {
         settings.group_id = Some("group-1".to_string());
         settings.sidebar_collapsed = true;
         settings.git_root = Some("/tmp".to_string());
+        settings.launch_script = Some("npm run dev".to_string());
 
         let updated =
             apply_workspace_settings_update(&mut workspaces, &id, settings.clone()).expect("update");
@@ -1675,6 +1676,7 @@ mod tests {
         assert_eq!(updated.settings.group_id.as_deref(), Some("group-1"));
         assert!(updated.settings.sidebar_collapsed);
         assert_eq!(updated.settings.git_root.as_deref(), Some("/tmp"));
+        assert_eq!(updated.settings.launch_script.as_deref(), Some("npm run dev"));
 
         let temp_dir = std::env::temp_dir()
             .join(format!("codex-monitor-test-{}", Uuid::new_v4()));
@@ -1689,5 +1691,6 @@ mod tests {
         assert_eq!(stored.settings.group_id.as_deref(), Some("group-1"));
         assert!(stored.settings.sidebar_collapsed);
         assert_eq!(stored.settings.git_root.as_deref(), Some("/tmp"));
+        assert_eq!(stored.settings.launch_script.as_deref(), Some("npm run dev"));
     }
 }

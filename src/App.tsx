@@ -84,6 +84,7 @@ import { useThreadRows } from "./features/app/hooks/useThreadRows";
 import { useLiquidGlassEffect } from "./features/app/hooks/useLiquidGlassEffect";
 import { useCopyThread } from "./features/threads/hooks/useCopyThread";
 import { useTerminalController } from "./features/terminal/hooks/useTerminalController";
+import { useWorkspaceLaunchScript } from "./features/app/hooks/useWorkspaceLaunchScript";
 import { useGitCommitController } from "./features/app/hooks/useGitCommitController";
 import { WorkspaceHome } from "./features/workspaces/components/WorkspaceHome";
 import { useWorkspaceHome } from "./features/workspaces/hooks/useWorkspaceHome";
@@ -215,6 +216,7 @@ function MainApp() {
     terminalOpen,
     handleDebugClick,
     handleToggleTerminal,
+    openTerminal,
   } = useLayoutController({
     uiScale,
     activeWorkspaceId,
@@ -1269,11 +1271,28 @@ function MainApp() {
     onNewTerminal,
     onCloseTerminal,
     terminalState,
+    ensureTerminalWithTitle,
+    restartTerminalSession,
   } = useTerminalController({
     activeWorkspaceId,
     activeWorkspace,
     terminalOpen,
     onDebug: addDebugEntry,
+  });
+
+  const ensureLaunchTerminal = useCallback(
+    (workspaceId: string) => ensureTerminalWithTitle(workspaceId, "launch", "Launch"),
+    [ensureTerminalWithTitle],
+  );
+
+  const launchScriptState = useWorkspaceLaunchScript({
+    activeWorkspace,
+    updateWorkspaceSettings,
+    openTerminal,
+    ensureLaunchTerminal,
+    restartLaunchSession: restartTerminalSession,
+    terminalState,
+    activeTerminalId,
   });
 
   const { handleCycleAgent, handleCycleWorkspace } = useWorkspaceCycling({
@@ -1482,6 +1501,16 @@ function MainApp() {
     onCopyThread: handleCopyThread,
     onToggleTerminal: handleToggleTerminal,
     showTerminalButton: !isCompact,
+    launchScript: launchScriptState.launchScript,
+    launchScriptEditorOpen: launchScriptState.editorOpen,
+    launchScriptDraft: launchScriptState.draftScript,
+    launchScriptSaving: launchScriptState.isSaving,
+    launchScriptError: launchScriptState.error,
+    onRunLaunchScript: launchScriptState.onRunLaunchScript,
+    onOpenLaunchScriptEditor: launchScriptState.onOpenEditor,
+    onCloseLaunchScriptEditor: launchScriptState.onCloseEditor,
+    onLaunchScriptDraftChange: launchScriptState.onDraftScriptChange,
+    onSaveLaunchScript: launchScriptState.onSaveLaunchScript,
     mainHeaderActionsNode: (
       <MainHeaderActions
         centerMode={centerMode}
