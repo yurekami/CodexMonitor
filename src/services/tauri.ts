@@ -744,8 +744,15 @@ export async function sendNotification(
   body: string,
 ): Promise<void> {
   const notification = await import("@tauri-apps/plugin-notification");
-  const permission = await notification.requestPermission();
-  if (permission === "granted") {
+  let permissionGranted = await notification.isPermissionGranted();
+  if (!permissionGranted) {
+    const permission = await notification.requestPermission();
+    permissionGranted = permission === "granted";
+    if (!permissionGranted) {
+      console.warn("Notification permission not granted.", { permission });
+    }
+  }
+  if (permissionGranted) {
     await notification.sendNotification({ title, body });
   }
 }

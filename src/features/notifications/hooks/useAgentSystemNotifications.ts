@@ -140,10 +140,9 @@ export function useAgentSystemNotifications({
   const handleTurnStarted = useCallback(
     (workspaceId: string, threadId: string, turnId: string) => {
       const startedAt = Date.now();
-      turnStartByThread.current.set(
-        buildThreadKey(workspaceId, threadId),
-        startedAt,
-      );
+      const threadKey = buildThreadKey(workspaceId, threadId);
+      turnStartByThread.current.set(threadKey, startedAt);
+      lastMessageByThread.current.delete(threadKey);
       if (turnId) {
         turnStartById.current.set(buildTurnKey(workspaceId, turnId), startedAt);
       }
@@ -158,6 +157,7 @@ export function useAgentSystemNotifications({
       if (!shouldNotify(durationMs, threadKey)) {
         return;
       }
+      lastMessageByThread.current.delete(threadKey);
       const { title, body } = getNotificationContent(
         workspaceId,
         threadId,
@@ -183,6 +183,7 @@ export function useAgentSystemNotifications({
       if (!shouldNotify(durationMs, threadKey)) {
         return;
       }
+      lastMessageByThread.current.delete(threadKey);
       const title = getWorkspaceName?.(workspaceId) ?? "Agent Error";
       const body = payload.message || "An error occurred.";
       void notify(title, truncateText(body, MAX_BODY_LENGTH), "error");
@@ -215,6 +216,7 @@ export function useAgentSystemNotifications({
       if (!shouldNotify(durationMs, threadKey)) {
         return;
       }
+      lastMessageByThread.current.delete(threadKey);
       const { title, body } = getNotificationContent(
         event.workspaceId,
         event.threadId,
