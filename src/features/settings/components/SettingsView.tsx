@@ -14,10 +14,11 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import X from "lucide-react/dist/esm/icons/x";
 import FlaskConical from "lucide-react/dist/esm/icons/flask-conical";
+import Plug from "lucide-react/dist/esm/icons/plug";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import type {
   AppSettings,
-  CodexDoctorResult,
+  ClaudeCodeDoctorResult,
   DictationModelStatus,
   WorkspaceSettings,
   OpenAppTarget,
@@ -31,7 +32,7 @@ import {
   getDefaultInterruptShortcut,
 } from "../../../utils/shortcuts";
 import { clampUiScale } from "../../../utils/uiScale";
-import { getCodexConfigPath } from "../../../services/tauri";
+import { getClaudeCodeConfigPath } from "../../../services/tauri";
 import {
   DEFAULT_CODE_FONT_FAMILY,
   DEFAULT_UI_FONT_FAMILY,
@@ -44,8 +45,9 @@ import {
 import { DEFAULT_OPEN_APP_ID, OPEN_APP_STORAGE_KEY } from "../../app/constants";
 import { GENERIC_APP_ICON, getKnownOpenAppIcon } from "../../app/utils/openAppIcons";
 import { useGlobalAgentsMd } from "../hooks/useGlobalAgentsMd";
-import { useGlobalCodexConfigToml } from "../hooks/useGlobalCodexConfigToml";
+import { useGlobalClaudeCodeConfig } from "../hooks/useGlobalCodexConfigToml";
 import { FileEditorCard } from "../../shared/components/FileEditorCard";
+import { McpSettingsSection } from "./McpSettingsSection";
 
 const DICTATION_MODELS = [
   { id: "tiny", label: "Tiny", size: "75 MB", note: "Fastest, least accurate." },
@@ -151,10 +153,10 @@ export type SettingsViewProps = {
   openAppIconById: Record<string, string>;
   onUpdateAppSettings: (next: AppSettings) => Promise<void>;
   onRunDoctor: (
-    codexBin: string | null,
-    codexArgs: string | null,
-  ) => Promise<CodexDoctorResult>;
-  onUpdateWorkspaceCodexBin: (id: string, codexBin: string | null) => Promise<void>;
+    claudeCodeBin: string | null,
+    claudeCodeArgs: string | null,
+  ) => Promise<ClaudeCodeDoctorResult>;
+  onUpdateWorkspaceClaudeCodeBin: (id: string, claudeCodeBin: string | null) => Promise<void>;
   onUpdateWorkspaceSettings: (
     id: string,
     settings: Partial<WorkspaceSettings>,
@@ -167,7 +169,7 @@ export type SettingsViewProps = {
   onDownloadDictationModel?: () => void;
   onCancelDictationDownload?: () => void;
   onRemoveDictationModel?: () => void;
-  initialSection?: CodexSection;
+  initialSection?: ClaudeCodeSection;
 };
 
 type SettingsSection =
@@ -177,8 +179,9 @@ type SettingsSection =
   | "dictation"
   | "shortcuts"
   | "open-apps"
-  | "git";
-type CodexSection = SettingsSection | "codex" | "features";
+  | "git"
+  | "mcp";
+type ClaudeCodeSection = SettingsSection | "claude-code" | "features";
 type ShortcutSettingKey =
   | "composerModelShortcut"
   | "composerAccessShortcut"
@@ -297,7 +300,7 @@ export function SettingsView({
   openAppIconById,
   onUpdateAppSettings,
   onRunDoctor,
-  onUpdateWorkspaceCodexBin,
+  onUpdateWorkspaceClaudeCodeBin,
   onUpdateWorkspaceSettings,
   scaleShortcutTitle,
   scaleShortcutText,
@@ -309,9 +312,9 @@ export function SettingsView({
   onRemoveDictationModel,
   initialSection,
 }: SettingsViewProps) {
-  const [activeSection, setActiveSection] = useState<CodexSection>("projects");
-  const [codexPathDraft, setCodexPathDraft] = useState(appSettings.codexBin ?? "");
-  const [codexArgsDraft, setCodexArgsDraft] = useState(appSettings.codexArgs ?? "");
+  const [activeSection, setActiveSection] = useState<ClaudeCodeSection>("projects");
+  const [claudeCodePathDraft, setClaudeCodePathDraft] = useState(appSettings.claudeCodeBin ?? "");
+  const [claudeCodeArgsDraft, setClaudeCodeArgsDraft] = useState(appSettings.claudeCodeArgs ?? "");
   const [remoteHostDraft, setRemoteHostDraft] = useState(appSettings.remoteBackendHost);
   const [remoteTokenDraft, setRemoteTokenDraft] = useState(appSettings.remoteBackendToken ?? "");
   const [scaleDraft, setScaleDraft] = useState(
@@ -320,13 +323,13 @@ export function SettingsView({
   const [uiFontDraft, setUiFontDraft] = useState(appSettings.uiFontFamily);
   const [codeFontDraft, setCodeFontDraft] = useState(appSettings.codeFontFamily);
   const [codeFontSizeDraft, setCodeFontSizeDraft] = useState(appSettings.codeFontSize);
-  const [codexBinOverrideDrafts, setCodexBinOverrideDrafts] = useState<
+  const [claudeCodeBinOverrideDrafts, setClaudeCodeBinOverrideDrafts] = useState<
     Record<string, string>
   >({});
-  const [codexHomeOverrideDrafts, setCodexHomeOverrideDrafts] = useState<
+  const [claudeCodeHomeOverrideDrafts, setClaudeCodeHomeOverrideDrafts] = useState<
     Record<string, string>
   >({});
-  const [codexArgsOverrideDrafts, setCodexArgsOverrideDrafts] = useState<
+  const [claudeCodeArgsOverrideDrafts, setClaudeCodeArgsOverrideDrafts] = useState<
     Record<string, string>
   >({});
   const [groupDrafts, setGroupDrafts] = useState<Record<string, string>>({});
@@ -340,7 +343,7 @@ export function SettingsView({
   );
   const [doctorState, setDoctorState] = useState<{
     status: "idle" | "running" | "done";
-    result: CodexDoctorResult | null;
+    result: ClaudeCodeDoctorResult | null;
   }>({ status: "idle", result: null });
   const {
     content: globalAgentsContent,
@@ -365,7 +368,7 @@ export function SettingsView({
     setContent: setGlobalConfigContent,
     refresh: refreshGlobalConfig,
     save: saveGlobalConfig,
-  } = useGlobalCodexConfigToml();
+  } = useGlobalClaudeCodeConfig();
   const [openConfigError, setOpenConfigError] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [shortcutDrafts, setShortcutDrafts] = useState({
@@ -437,8 +440,8 @@ export function SettingsView({
     () => groupedWorkspaces.flatMap((group) => group.workspaces),
     [groupedWorkspaces],
   );
-  const hasCodexHomeOverrides = useMemo(
-    () => projects.some((workspace) => workspace.settings.codexHome != null),
+  const hasClaudeCodeHomeOverrides = useMemo(
+    () => projects.some((workspace) => workspace.settings.claudeCodeHome != null),
     [projects],
   );
 
@@ -470,12 +473,12 @@ export function SettingsView({
   }, [onClose]);
 
   useEffect(() => {
-    setCodexPathDraft(appSettings.codexBin ?? "");
-  }, [appSettings.codexBin]);
+    setClaudeCodePathDraft(appSettings.claudeCodeBin ?? "");
+  }, [appSettings.claudeCodeBin]);
 
   useEffect(() => {
-    setCodexArgsDraft(appSettings.codexArgs ?? "");
-  }, [appSettings.codexArgs]);
+    setClaudeCodeArgsDraft(appSettings.claudeCodeArgs ?? "");
+  }, [appSettings.claudeCodeArgs]);
 
   useEffect(() => {
     setRemoteHostDraft(appSettings.remoteBackendHost);
@@ -549,7 +552,7 @@ export function SettingsView({
   const handleOpenConfig = useCallback(async () => {
     setOpenConfigError(null);
     try {
-      const configPath = await getCodexConfigPath();
+      const configPath = await getClaudeCodeConfigPath();
       await revealItemInDir(configPath);
     } catch (error) {
       setOpenConfigError(
@@ -559,25 +562,25 @@ export function SettingsView({
   }, []);
 
   useEffect(() => {
-    setCodexBinOverrideDrafts((prev) =>
+    setClaudeCodeBinOverrideDrafts((prev) =>
       buildWorkspaceOverrideDrafts(
         projects,
         prev,
-        (workspace) => workspace.codex_bin ?? null,
+        (workspace) => workspace.claude_code_bin ?? null,
       ),
     );
-    setCodexHomeOverrideDrafts((prev) =>
+    setClaudeCodeHomeOverrideDrafts((prev) =>
       buildWorkspaceOverrideDrafts(
         projects,
         prev,
-        (workspace) => workspace.settings.codexHome ?? null,
+        (workspace) => workspace.settings.claudeCodeHome ?? null,
       ),
     );
-    setCodexArgsOverrideDrafts((prev) =>
+    setClaudeCodeArgsOverrideDrafts((prev) =>
       buildWorkspaceOverrideDrafts(
         projects,
         prev,
-        (workspace) => workspace.settings.codexArgs ?? null,
+        (workspace) => workspace.settings.claudeCodeArgs ?? null,
       ),
     );
   }, [projects]);
@@ -598,11 +601,11 @@ export function SettingsView({
     }
   }, [initialSection]);
 
-  const nextCodexBin = codexPathDraft.trim() ? codexPathDraft.trim() : null;
-  const nextCodexArgs = codexArgsDraft.trim() ? codexArgsDraft.trim() : null;
-  const codexDirty =
-    nextCodexBin !== (appSettings.codexBin ?? null) ||
-    nextCodexArgs !== (appSettings.codexArgs ?? null);
+  const nextClaudeCodeBin = claudeCodePathDraft.trim() ? claudeCodePathDraft.trim() : null;
+  const nextClaudeCodeArgs = claudeCodeArgsDraft.trim() ? claudeCodeArgsDraft.trim() : null;
+  const claudeCodeDirty =
+    nextClaudeCodeBin !== (appSettings.claudeCodeBin ?? null) ||
+    nextClaudeCodeArgs !== (appSettings.claudeCodeArgs ?? null);
 
   const trimmedScale = scaleDraft.trim();
   const parsedPercent = trimmedScale
@@ -610,13 +613,13 @@ export function SettingsView({
     : Number.NaN;
   const parsedScale = Number.isFinite(parsedPercent) ? parsedPercent / 100 : null;
 
-  const handleSaveCodexSettings = async () => {
+  const handleSaveClaudeCodeSettings = async () => {
     setIsSavingSettings(true);
     try {
       await onUpdateAppSettings({
         ...appSettings,
-        codexBin: nextCodexBin,
-        codexArgs: nextCodexArgs,
+        claudeCodeBin: nextClaudeCodeBin,
+        claudeCodeArgs: nextClaudeCodeArgs,
       });
     } finally {
       setIsSavingSettings(false);
@@ -851,25 +854,25 @@ export function SettingsView({
     });
   };
 
-  const handleBrowseCodex = async () => {
+  const handleBrowseClaudeCode = async () => {
     const selection = await open({ multiple: false, directory: false });
     if (!selection || Array.isArray(selection)) {
       return;
     }
-    setCodexPathDraft(selection);
+    setClaudeCodePathDraft(selection);
   };
 
   const handleRunDoctor = async () => {
     setDoctorState({ status: "running", result: null });
     try {
-      const result = await onRunDoctor(nextCodexBin, nextCodexArgs);
+      const result = await onRunDoctor(nextClaudeCodeBin, nextClaudeCodeArgs);
       setDoctorState({ status: "done", result });
     } catch (error) {
       setDoctorState({
         status: "done",
         result: {
           ok: false,
-          codexBin: nextCodexBin,
+          claudeCodeBin: nextClaudeCodeBin,
           version: null,
           appServerOk: false,
           details: error instanceof Error ? error.message : String(error),
@@ -1087,11 +1090,19 @@ export function SettingsView({
             </button>
             <button
               type="button"
-              className={`settings-nav ${activeSection === "codex" ? "active" : ""}`}
-              onClick={() => setActiveSection("codex")}
+              className={`settings-nav ${activeSection === "mcp" ? "active" : ""}`}
+              onClick={() => setActiveSection("mcp")}
+            >
+              <Plug aria-hidden />
+              MCP Servers
+            </button>
+            <button
+              type="button"
+              className={`settings-nav ${activeSection === "claude-code" ? "active" : ""}`}
+              onClick={() => setActiveSection("claude-code")}
             >
               <TerminalSquare aria-hidden />
-              Codex
+              Claude Code
             </button>
             <button
               type="button"
@@ -1351,7 +1362,7 @@ export function SettingsView({
                 <div className="settings-toggle-row">
                   <div>
                     <div className="settings-toggle-title">
-                      Show remaining Codex limits
+                      Show remaining Claude Code limits
                     </div>
                     <div className="settings-toggle-subtitle">
                       Display what is left instead of what is used.
@@ -2693,31 +2704,36 @@ export function SettingsView({
                 </div>
               </section>
             )}
-            {activeSection === "codex" && (
+            {activeSection === "mcp" && (
+              <McpSettingsSection
+                workspaceId={projects.length > 0 ? projects[0].id : null}
+              />
+            )}
+            {activeSection === "claude-code" && (
               <section className="settings-section">
-                <div className="settings-section-title">Codex</div>
+                <div className="settings-section-title">Claude Code</div>
                 <div className="settings-section-subtitle">
-                  Configure the Codex CLI used by CodexMonitor and validate the install.
+                  Configure the Claude Code CLI used by ClaudeCodeMonitor and validate the install.
                 </div>
                 <div className="settings-field">
-                  <label className="settings-field-label" htmlFor="codex-path">
-                    Default Codex path
+                  <label className="settings-field-label" htmlFor="claude-code-path">
+                    Default Claude Code path
                   </label>
                   <div className="settings-field-row">
                     <input
-                      id="codex-path"
+                      id="claude-code-path"
                       className="settings-input"
-                      value={codexPathDraft}
-                      placeholder="codex"
-                      onChange={(event) => setCodexPathDraft(event.target.value)}
+                      value={claudeCodePathDraft}
+                      placeholder="claude"
+                      onChange={(event) => setClaudeCodePathDraft(event.target.value)}
                     />
-                    <button type="button" className="ghost" onClick={handleBrowseCodex}>
+                    <button type="button" className="ghost" onClick={handleBrowseClaudeCode}>
                       Browse
                     </button>
                     <button
                       type="button"
                       className="ghost"
-                      onClick={() => setCodexPathDraft("")}
+                      onClick={() => setClaudeCodePathDraft("")}
                     >
                       Use PATH
                     </button>
@@ -2725,35 +2741,35 @@ export function SettingsView({
                   <div className="settings-help">
                     Leave empty to use the system PATH resolution.
                   </div>
-                  <label className="settings-field-label" htmlFor="codex-args">
-                    Default Codex args
+                  <label className="settings-field-label" htmlFor="claude-code-args">
+                    Default Claude Code args
                   </label>
                   <div className="settings-field-row">
                     <input
-                      id="codex-args"
+                      id="claude-code-args"
                       className="settings-input"
-                      value={codexArgsDraft}
+                      value={claudeCodeArgsDraft}
                       placeholder="--profile personal"
-                      onChange={(event) => setCodexArgsDraft(event.target.value)}
+                      onChange={(event) => setClaudeCodeArgsDraft(event.target.value)}
                     />
                     <button
                       type="button"
                       className="ghost"
-                      onClick={() => setCodexArgsDraft("")}
+                      onClick={() => setClaudeCodeArgsDraft("")}
                     >
                       Clear
                     </button>
                   </div>
                   <div className="settings-help">
-                    Extra flags passed before <code>app-server</code>. Use quotes for values with
+                    Extra flags passed before <code>bridge</code>. Use quotes for values with
                     spaces.
                   </div>
                 <div className="settings-field-actions">
-                  {codexDirty && (
+                  {claudeCodeDirty && (
                     <button
                       type="button"
                       className="primary"
-                      onClick={handleSaveCodexSettings}
+                      onClick={handleSaveClaudeCodeSettings}
                       disabled={isSavingSettings}
                     >
                       {isSavingSettings ? "Saving..." : "Save"}
@@ -2775,7 +2791,7 @@ export function SettingsView({
                     className={`settings-doctor ${doctorState.result.ok ? "ok" : "error"}`}
                   >
                     <div className="settings-doctor-title">
-                      {doctorState.result.ok ? "Codex looks good" : "Codex issue detected"}
+                      {doctorState.result.ok ? "Claude Code looks good" : "Claude Code issue detected"}
                     </div>
                     <div className="settings-doctor-body">
                       <div>
@@ -2913,7 +2929,7 @@ export function SettingsView({
                       />
                     </div>
                     <div className="settings-help">
-                      Start the daemon separately and point CodexMonitor to it (host:port + token).
+                      Start the daemon separately and point ClaudeCodeMonitor to it (host:port + token).
                     </div>
                   </div>
                 )}
@@ -2923,7 +2939,7 @@ export function SettingsView({
                   meta={globalAgentsMeta}
                   error={globalAgentsError}
                   value={globalAgentsContent}
-                  placeholder="Add global instructions for Codex agents…"
+                  placeholder="Add global instructions for Claude Code agents…"
                   disabled={globalAgentsLoading}
                   refreshDisabled={globalAgentsRefreshDisabled}
                   saveDisabled={globalAgentsSaveDisabled}
@@ -2937,7 +2953,7 @@ export function SettingsView({
                   }}
                   helpText={
                     <>
-                      Stored at <code>~/.codex/AGENTS.md</code>.
+                      Stored at <code>~/.claude/AGENTS.md</code>.
                     </>
                   }
                   classNames={{
@@ -2958,7 +2974,7 @@ export function SettingsView({
                   meta={globalConfigMeta}
                   error={globalConfigError}
                   value={globalConfigContent}
-                  placeholder="Edit the global Codex config.toml…"
+                  placeholder="Edit the global Claude Code config.toml…"
                   disabled={globalConfigLoading}
                   refreshDisabled={globalConfigRefreshDisabled}
                   saveDisabled={globalConfigSaveDisabled}
@@ -2972,7 +2988,7 @@ export function SettingsView({
                   }}
                   helpText={
                     <>
-                      Stored at <code>~/.codex/config.toml</code>.
+                      Stored at <code>~/.claude/config.toml</code>.
                     </>
                   }
                   classNames={{
@@ -3001,33 +3017,33 @@ export function SettingsView({
                           <div className="settings-override-field">
                             <input
                               className="settings-input settings-input--compact"
-                              value={codexBinOverrideDrafts[workspace.id] ?? ""}
-                              placeholder="Codex binary override"
+                              value={claudeCodeBinOverrideDrafts[workspace.id] ?? ""}
+                              placeholder="Claude Code binary override"
                               onChange={(event) =>
-                                setCodexBinOverrideDrafts((prev) => ({
+                                setClaudeCodeBinOverrideDrafts((prev) => ({
                                   ...prev,
                                   [workspace.id]: event.target.value,
                                 }))
                               }
                               onBlur={async () => {
-                                const draft = codexBinOverrideDrafts[workspace.id] ?? "";
+                                const draft = claudeCodeBinOverrideDrafts[workspace.id] ?? "";
                                 const nextValue = normalizeOverrideValue(draft);
-                                if (nextValue === (workspace.codex_bin ?? null)) {
+                                if (nextValue === (workspace.claude_code_bin ?? null)) {
                                   return;
                                 }
-                                await onUpdateWorkspaceCodexBin(workspace.id, nextValue);
+                                await onUpdateWorkspaceClaudeCodeBin(workspace.id, nextValue);
                               }}
-                              aria-label={`Codex binary override for ${workspace.name}`}
+                              aria-label={`Claude Code binary override for ${workspace.name}`}
                             />
                             <button
                               type="button"
                               className="ghost"
                               onClick={async () => {
-                                setCodexBinOverrideDrafts((prev) => ({
+                                setClaudeCodeBinOverrideDrafts((prev) => ({
                                   ...prev,
                                   [workspace.id]: "",
                                 }));
-                                await onUpdateWorkspaceCodexBin(workspace.id, null);
+                                await onUpdateWorkspaceClaudeCodeBin(workspace.id, null);
                               }}
                             >
                               Clear
@@ -3036,36 +3052,36 @@ export function SettingsView({
                           <div className="settings-override-field">
                             <input
                               className="settings-input settings-input--compact"
-                              value={codexHomeOverrideDrafts[workspace.id] ?? ""}
-                              placeholder="CODEX_HOME override"
+                              value={claudeCodeHomeOverrideDrafts[workspace.id] ?? ""}
+                              placeholder="CLAUDE_HOME override"
                               onChange={(event) =>
-                                setCodexHomeOverrideDrafts((prev) => ({
+                                setClaudeCodeHomeOverrideDrafts((prev) => ({
                                   ...prev,
                                   [workspace.id]: event.target.value,
                                 }))
                               }
                               onBlur={async () => {
-                                const draft = codexHomeOverrideDrafts[workspace.id] ?? "";
+                                const draft = claudeCodeHomeOverrideDrafts[workspace.id] ?? "";
                                 const nextValue = normalizeOverrideValue(draft);
-                                if (nextValue === (workspace.settings.codexHome ?? null)) {
+                                if (nextValue === (workspace.settings.claudeCodeHome ?? null)) {
                                   return;
                                 }
                                 await onUpdateWorkspaceSettings(workspace.id, {
-                                  codexHome: nextValue,
+                                  claudeCodeHome: nextValue,
                                 });
                               }}
-                              aria-label={`CODEX_HOME override for ${workspace.name}`}
+                              aria-label={`CLAUDE_HOME override for ${workspace.name}`}
                             />
                             <button
                               type="button"
                               className="ghost"
                               onClick={async () => {
-                                setCodexHomeOverrideDrafts((prev) => ({
+                                setClaudeCodeHomeOverrideDrafts((prev) => ({
                                   ...prev,
                                   [workspace.id]: "",
                                 }));
                                 await onUpdateWorkspaceSettings(workspace.id, {
-                                  codexHome: null,
+                                  claudeCodeHome: null,
                                 });
                               }}
                             >
@@ -3075,36 +3091,36 @@ export function SettingsView({
                           <div className="settings-override-field">
                             <input
                               className="settings-input settings-input--compact"
-                              value={codexArgsOverrideDrafts[workspace.id] ?? ""}
-                              placeholder="Codex args override"
+                              value={claudeCodeArgsOverrideDrafts[workspace.id] ?? ""}
+                              placeholder="Claude Code args override"
                               onChange={(event) =>
-                                setCodexArgsOverrideDrafts((prev) => ({
+                                setClaudeCodeArgsOverrideDrafts((prev) => ({
                                   ...prev,
                                   [workspace.id]: event.target.value,
                                 }))
                               }
                               onBlur={async () => {
-                                const draft = codexArgsOverrideDrafts[workspace.id] ?? "";
+                                const draft = claudeCodeArgsOverrideDrafts[workspace.id] ?? "";
                                 const nextValue = normalizeOverrideValue(draft);
-                                if (nextValue === (workspace.settings.codexArgs ?? null)) {
+                                if (nextValue === (workspace.settings.claudeCodeArgs ?? null)) {
                                   return;
                                 }
                                 await onUpdateWorkspaceSettings(workspace.id, {
-                                  codexArgs: nextValue,
+                                  claudeCodeArgs: nextValue,
                                 });
                               }}
-                              aria-label={`Codex args override for ${workspace.name}`}
+                              aria-label={`Claude Code args override for ${workspace.name}`}
                             />
                             <button
                               type="button"
                               className="ghost"
                               onClick={async () => {
-                                setCodexArgsOverrideDrafts((prev) => ({
+                                setClaudeCodeArgsOverrideDrafts((prev) => ({
                                   ...prev,
                                   [workspace.id]: "",
                                 }));
                                 await onUpdateWorkspaceSettings(workspace.id, {
-                                  codexArgs: null,
+                                  claudeCodeArgs: null,
                                 });
                               }}
                             >
@@ -3126,11 +3142,11 @@ export function SettingsView({
               <section className="settings-section">
                 <div className="settings-section-title">Features</div>
                 <div className="settings-section-subtitle">
-                  Manage stable and experimental Codex features.
+                  Manage stable and experimental Claude Code features.
                 </div>
-                {hasCodexHomeOverrides && (
+                {hasClaudeCodeHomeOverrides && (
                   <div className="settings-help">
-                    Feature settings are stored in the default CODEX_HOME config.toml.
+                    Feature settings are stored in the default CLAUDE_HOME config.toml.
                     <br />
                     Workspace overrides are not updated.
                   </div>
@@ -3139,7 +3155,7 @@ export function SettingsView({
                   <div>
                     <div className="settings-toggle-title">Config file</div>
                     <div className="settings-toggle-subtitle">
-                      Open the Codex config in Finder.
+                      Open the Claude Code config in Finder.
                     </div>
                   </div>
                   <button type="button" className="ghost" onClick={handleOpenConfig}>
@@ -3181,7 +3197,7 @@ export function SettingsView({
                   <div>
                     <div className="settings-toggle-title">Personality</div>
                     <div className="settings-toggle-subtitle">
-                      Choose Codex communication style (writes top-level{" "}
+                      Choose Claude Code communication style (writes top-level{" "}
                       <code>personality</code> in config.toml).
                     </div>
                   </div>
@@ -3209,7 +3225,7 @@ export function SettingsView({
                   <div>
                     <div className="settings-toggle-title">Multi-agent</div>
                     <div className="settings-toggle-subtitle">
-                      Enable multi-agent collaboration tools in Codex.
+                      Enable multi-agent collaboration tools in Claude Code.
                     </div>
                   </div>
                   <button

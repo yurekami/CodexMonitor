@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type {
   AppSettings,
-  CodexDoctorResult,
+  ClaudeCodeDoctorResult,
   DictationModelStatus,
   DictationSessionState,
   LocalUsageSnapshot,
@@ -67,8 +67,8 @@ export async function listWorkspaces(): Promise<WorkspaceInfo[]> {
   }
 }
 
-export async function getCodexConfigPath(): Promise<string> {
-  return invoke<string>("get_codex_config_path");
+export async function getClaudeCodeConfigPath(): Promise<string> {
+  return invoke<string>("get_claude_code_config_path");
 }
 
 export type TextFileResponse = {
@@ -78,11 +78,11 @@ export type TextFileResponse = {
 };
 
 export type GlobalAgentsResponse = TextFileResponse;
-export type GlobalCodexConfigResponse = TextFileResponse;
+export type GlobalClaudeCodeConfigResponse = TextFileResponse;
 export type AgentMdResponse = TextFileResponse;
 
 type FileScope = "workspace" | "global";
-type FileKind = "agents" | "config";
+type FileKind = "agents" | "config" | "claude_json";
 
 async function fileRead(
   scope: FileScope,
@@ -109,12 +109,20 @@ export async function writeGlobalAgentsMd(content: string): Promise<void> {
   return fileWrite("global", "agents", content);
 }
 
-export async function readGlobalCodexConfigToml(): Promise<GlobalCodexConfigResponse> {
+export async function readGlobalClaudeCodeConfig(): Promise<GlobalClaudeCodeConfigResponse> {
   return fileRead("global", "config");
 }
 
-export async function writeGlobalCodexConfigToml(content: string): Promise<void> {
+export async function writeGlobalClaudeCodeConfig(content: string): Promise<void> {
   return fileWrite("global", "config", content);
+}
+
+export async function readClaudeJson(): Promise<GlobalClaudeCodeConfigResponse> {
+  return fileRead("global", "claude_json");
+}
+
+export async function writeClaudeJson(content: string): Promise<void> {
+  return fileWrite("global", "claude_json", content);
 }
 
 export async function getConfigModel(workspaceId: string): Promise<string | null> {
@@ -131,9 +139,9 @@ export async function getConfigModel(workspaceId: string): Promise<string | null
 
 export async function addWorkspace(
   path: string,
-  codex_bin: string | null,
+  claude_code_bin: string | null,
 ): Promise<WorkspaceInfo> {
-  return invoke<WorkspaceInfo>("add_workspace", { path, codex_bin });
+  return invoke<WorkspaceInfo>("add_workspace", { path, claude_code_bin });
 }
 
 export async function isWorkspacePathDir(path: string): Promise<boolean> {
@@ -181,11 +189,11 @@ export async function updateWorkspaceSettings(
   return invoke<WorkspaceInfo>("update_workspace_settings", { id, settings });
 }
 
-export async function updateWorkspaceCodexBin(
+export async function updateWorkspaceClaudeCodeBin(
   id: string,
-  codex_bin: string | null,
+  claude_code_bin: string | null,
 ): Promise<WorkspaceInfo> {
-  return invoke<WorkspaceInfo>("update_workspace_codex_bin", { id, codex_bin });
+  return invoke<WorkspaceInfo>("update_workspace_claude_code_bin", { id, claude_code_bin });
 }
 
 export async function removeWorkspace(id: string): Promise<void> {
@@ -473,15 +481,15 @@ export async function getAccountInfo(workspaceId: string) {
   return invoke<any>("account_read", { workspaceId });
 }
 
-export async function runCodexLogin(workspaceId: string) {
-  return invoke<{ loginId: string; authUrl: string; raw?: unknown }>("codex_login", {
+export async function runClaudeCodeLogin(workspaceId: string) {
+  return invoke<{ loginId: string; authUrl: string; raw?: unknown }>("claude_code_login", {
     workspaceId,
   });
 }
 
-export async function cancelCodexLogin(workspaceId: string) {
+export async function cancelClaudeCodeLogin(workspaceId: string) {
   return invoke<{ canceled: boolean; status?: string; raw?: unknown }>(
-    "codex_login_cancel",
+    "claude_code_login_cancel",
     { workspaceId },
   );
 }
@@ -584,11 +592,11 @@ export async function setMenuAccelerators(
   return invoke("menu_set_accelerators", { updates });
 }
 
-export async function runCodexDoctor(
-  codexBin: string | null,
-  codexArgs: string | null,
-): Promise<CodexDoctorResult> {
-  return invoke<CodexDoctorResult>("codex_doctor", { codexBin, codexArgs });
+export async function runClaudeCodeDoctor(
+  claudeCodeBin: string | null,
+  claudeCodeArgs: string | null,
+): Promise<ClaudeCodeDoctorResult> {
+  return invoke<ClaudeCodeDoctorResult>("claude_code_doctor", { claudeCodeBin, claudeCodeArgs });
 }
 
 export async function getWorkspaceFiles(workspaceId: string) {

@@ -14,6 +14,7 @@ import Search from "lucide-react/dist/esm/icons/search";
 import Terminal from "lucide-react/dist/esm/icons/terminal";
 import Users from "lucide-react/dist/esm/icons/users";
 import Wrench from "lucide-react/dist/esm/icons/wrench";
+import Plug from "lucide-react/dist/esm/icons/plug";
 import X from "lucide-react/dist/esm/icons/x";
 import type {
   ConversationItem,
@@ -471,11 +472,14 @@ function buildToolSummary(
   if (item.toolType === "mcpToolCall") {
     const toolName = toolNameFromTitle(item.title);
     const args = parseToolArgs(item.detail);
+    const serverMatch = item.title?.match(/^Tool:\s*([^/]+)\s*\//);
+    const serverName = serverMatch ? serverMatch[1].trim() : "";
     if (toolName.toLowerCase().includes("search")) {
       return {
         label: "searched",
         value:
           firstStringField(args, ["query", "pattern", "text"]) || item.detail,
+        detail: serverName ? `via ${serverName}` : "",
       };
     }
     if (toolName.toLowerCase().includes("read")) {
@@ -484,14 +488,27 @@ function buildToolSummary(
       return {
         label: "read",
         value: basename(targetPath),
-        detail: targetPath && targetPath !== basename(targetPath) ? targetPath : "",
+        detail: serverName
+          ? `${targetPath && targetPath !== basename(targetPath) ? targetPath + " · " : ""}via ${serverName}`
+          : targetPath && targetPath !== basename(targetPath) ? targetPath : "",
+      };
+    }
+    if (
+      toolName.toLowerCase().includes("write") ||
+      toolName.toLowerCase().includes("create") ||
+      toolName.toLowerCase().includes("update")
+    ) {
+      return {
+        label: "wrote",
+        value: toolName,
+        detail: serverName ? `via ${serverName}` : item.detail || "",
       };
     }
     if (toolName) {
       return {
-        label: "tool",
+        label: serverName || "tool",
         value: toolName,
-        detail: item.detail || "",
+        detail: serverName ? `via ${serverName}` : item.detail || "",
       };
     }
   }
@@ -522,6 +539,16 @@ function toolIconForSummary(
   }
   if (item.toolType === "collabToolCall") {
     return Users;
+  }
+  if (item.toolType === "mcpToolCall") {
+    const label = summary.label.toLowerCase();
+    if (label === "read") {
+      return FileText;
+    }
+    if (label === "searched") {
+      return Search;
+    }
+    return Plug;
   }
 
   const label = summary.label.toLowerCase();

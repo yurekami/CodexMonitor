@@ -12,6 +12,7 @@ pub(crate) enum FileScope {
 pub(crate) enum FileKind {
     Agents,
     Config,
+    ClaudeJson,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,8 +24,8 @@ pub(crate) struct FilePolicy {
     pub(crate) allow_external_symlink_target: bool,
 }
 
-const AGENTS_FILENAME: &str = "AGENTS.md";
-const CONFIG_FILENAME: &str = "config.toml";
+const AGENTS_FILENAME: &str = "CLAUDE.md";
+const CONFIG_FILENAME: &str = "settings.json";
 
 pub(crate) fn policy_for(scope: FileScope, kind: FileKind) -> Result<FilePolicy, String> {
     match (scope, kind) {
@@ -37,20 +38,30 @@ pub(crate) fn policy_for(scope: FileScope, kind: FileKind) -> Result<FilePolicy,
         }),
         (FileScope::Global, FileKind::Agents) => Ok(FilePolicy {
             filename: AGENTS_FILENAME,
-            root_context: "CODEX_HOME",
+            root_context: "CLAUDE_HOME",
             root_may_be_missing: true,
             create_root: true,
             allow_external_symlink_target: true,
         }),
         (FileScope::Global, FileKind::Config) => Ok(FilePolicy {
             filename: CONFIG_FILENAME,
-            root_context: "CODEX_HOME",
+            root_context: "CLAUDE_HOME",
             root_may_be_missing: true,
             create_root: true,
             allow_external_symlink_target: false,
         }),
+        (FileScope::Global, FileKind::ClaudeJson) => Ok(FilePolicy {
+            filename: ".claude.json",
+            root_context: "HOME",
+            root_may_be_missing: false,
+            create_root: false,
+            allow_external_symlink_target: false,
+        }),
+        (FileScope::Workspace, FileKind::ClaudeJson) => {
+            Err(".claude.json is only supported for global scope".to_string())
+        }
         (FileScope::Workspace, FileKind::Config) => {
-            Err("config.toml is only supported for global scope".to_string())
+            Err("settings.json is only supported for global scope".to_string())
         }
     }
 }
@@ -62,7 +73,7 @@ mod tests {
     #[test]
     fn workspace_agents_policy_is_strict() {
         let policy = policy_for(FileScope::Workspace, FileKind::Agents).expect("policy");
-        assert_eq!(policy.filename, "AGENTS.md");
+        assert_eq!(policy.filename, "CLAUDE.md");
         assert_eq!(policy.root_context, "workspace root");
         assert!(!policy.root_may_be_missing);
         assert!(!policy.create_root);
@@ -72,8 +83,8 @@ mod tests {
     #[test]
     fn global_agents_policy_creates_root() {
         let policy = policy_for(FileScope::Global, FileKind::Agents).expect("policy");
-        assert_eq!(policy.filename, "AGENTS.md");
-        assert_eq!(policy.root_context, "CODEX_HOME");
+        assert_eq!(policy.filename, "CLAUDE.md");
+        assert_eq!(policy.root_context, "CLAUDE_HOME");
         assert!(policy.root_may_be_missing);
         assert!(policy.create_root);
         assert!(policy.allow_external_symlink_target);
@@ -82,8 +93,8 @@ mod tests {
     #[test]
     fn global_config_policy_creates_root() {
         let policy = policy_for(FileScope::Global, FileKind::Config).expect("policy");
-        assert_eq!(policy.filename, "config.toml");
-        assert_eq!(policy.root_context, "CODEX_HOME");
+        assert_eq!(policy.filename, "settings.json");
+        assert_eq!(policy.root_context, "CLAUDE_HOME");
         assert!(policy.root_may_be_missing);
         assert!(policy.create_root);
         assert!(!policy.allow_external_symlink_target);
@@ -92,6 +103,22 @@ mod tests {
     #[test]
     fn workspace_config_is_rejected() {
         let result = policy_for(FileScope::Workspace, FileKind::Config);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn global_claude_json_uses_home() {
+        let policy = policy_for(FileScope::Global, FileKind::ClaudeJson).expect("policy");
+        assert_eq!(policy.filename, ".claude.json");
+        assert_eq!(policy.root_context, "HOME");
+        assert!(!policy.root_may_be_missing);
+        assert!(!policy.create_root);
+        assert!(!policy.allow_external_symlink_target);
+    }
+
+    #[test]
+    fn workspace_claude_json_is_rejected() {
+        let result = policy_for(FileScope::Workspace, FileKind::ClaudeJson);
         assert!(result.is_err());
     }
 }
